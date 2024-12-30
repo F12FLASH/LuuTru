@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OneDrive Integration Demo</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      margin: 20px;
+    }
+    #file-list {
+      margin-top: 20px;
+      max-width: 600px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    #file-list ul {
+      list-style-type: none;
+      padding: 0;
+    }
+    #file-list li {
+      background: #f4f4f4;
+      margin: 5px 0;
+      padding: 10px;
+      border-radius: 5px;
+      text-align: left;
+    }
+  </style>
+</head>
+<body>
+  <h1>OneDrive Integration Demo</h1>
+  <button id="login-btn">Đăng nhập với OneDrive</button>
+  <div id="file-list" style="display: none;">
+    <h2>Danh sách tệp của bạn</h2>
+    <ul id="files"></ul>
+  </div>
+
+  <script>
+    const clientId = "e826b75e-084c-417a-b75f-166bfaa769c5";
+    const tenantId = "417d67fa-4d1b-4e2c-97c8-db20ba8444e0";
+    const redirectUri = `${window.location.origin}/`;
+
+    document.getElementById("login-btn").addEventListener("click", () => {
+      const authUrl = `https://login.microsoftonline.com/${tenantId}/oauth2/v2.0/authorize?` +
+        `client_id=${clientId}&response_type=token&redirect_uri=${encodeURIComponent(redirectUri)}&` +
+        `scope=${encodeURIComponent("Files.ReadWrite.All offline_access")}&response_mode=fragment`;
+
+      window.location.href = authUrl;
+    });
+
+    function getAccessTokenFromUrl() {
+      const hash = window.location.hash.substring(1);
+      const params = new URLSearchParams(hash);
+      return params.get("access_token");
+    }
+
+    async function getFiles(accessToken) {
+      const response = await fetch("https://graph.microsoft.com/v1.0/me/drive/root/children", {
+        headers: {
+          Authorization: `Bearer ${accessToken}`
+        }
+      });
+
+      if (!response.ok) {
+        alert("Không thể tải tệp. Kiểm tra lại quyền hoặc mã thông báo.");
+        return;
+      }
+
+      const data = await response.json();
+      const fileList = document.getElementById("files");
+      fileList.innerHTML = "";
+
+      data.value.forEach(file => {
+        const li = document.createElement("li");
+        li.textContent = file.name;
+        fileList.appendChild(li);
+      });
+
+      document.getElementById("file-list").style.display = "block";
+    }
+
+    // Kiểm tra nếu người dùng đã đăng nhập
+    const accessToken = getAccessTokenFromUrl();
+    if (accessToken) {
+      history.replaceState(null, null, redirectUri); // Xóa mã truy cập khỏi URL
+      getFiles(accessToken);
+    }
+  </script>
+</body>
+</html>
